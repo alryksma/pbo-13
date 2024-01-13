@@ -1,5 +1,36 @@
-data = []
+import mysql.connector
 
+# Koneksi ke database
+class DatabaseManager:
+    def __init__(self, host, user, password, database):
+        self.connection = mysql.connector.connect(
+            host=host, user=user, password=password, database=database
+        )
+        self.cursor = self.connection.cursor()
+
+    def execute_query(self, query, values=None):
+        if values:
+            self.cursor.execute(query, values)
+        else:
+            self.cursor.execute(query)
+        self.connection.commit()
+
+    def fetch_all(self, query, values=None):
+        if values:
+            self.cursor.execute(query, values)
+        else:
+            self.cursor.execute(query)
+        return self.cursor.fetchall()
+    
+    def hapus_data(self, table, condition_column, condition_value):
+        query = f"DELETE FROM {table} WHERE {condition_column} = %s"
+        values = (condition_value,)
+        self.execute_query(query, values)
+
+    def update_data(self, table, set_column, set_value, condition_column, condition_value):
+        query = f"UPDATE {table} SET {set_column} = %s WHERE {condition_column} = %s"
+        values = (set_value, condition_value)
+        self.execute_query(query, values)
 
 class Sosial:
     def __init__(self, nama, umur, tempatLahir):
@@ -7,18 +38,22 @@ class Sosial:
         self._umur = umur
         self.tempatLahir = tempatLahir
 
+    def tambahData(self, db_manager):
+        print("Tambah Data")
+        nama = input("Nama: ")
+        umur = int(input("Usia: "))
+        tempatLahir = input("Tempat Lahir: ")
+
+        # Menambah data ke database
+        query = "INSERT INTO sosial (nama, umur, tempatLahir) VALUES (%s, %s, %s)"
+        values = (nama, umur, tempatLahir)
+        db_manager.execute_query(query, values)
+
     def tampil(self):
         print(
             f"Nama: {self.nama}\nUsia: {self._umur}\nTempat Lahir: {self.tempatLahir}"
         )
 
-    def tambahData(self):
-        print("Tambah Data")
-        nama = input("Nama: ")
-        umur = int(input("Usia: "))
-        tempatLahir = input("Tempat Lahir: ")
-        return Sosial(nama, umur, tempatLahir)  # Mengembalikan objek Sosial yang baru
-    
     def tambahTahunLahir(self, tahun):
         self._umur += tahun
 
@@ -27,9 +62,7 @@ class Sosial:
 
 
 class IdentitasNegara(Sosial):
-    def __init__(
-        self, nama, umur, tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive
-    ):
+    def __init__(self, nama, umur, tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive):
         super().__init__(nama, umur, tempatLahir)
         self.__nik = nik
         self.__noKK = noKK
@@ -44,53 +77,33 @@ class IdentitasNegara(Sosial):
         )
         print(f"Status Nikah: {self.statusNikah}\nApakah Hidup: {self.isAlive}")
 
-    def tambahData(self):
-        super().tambahData()
-        nik = int(input("masukan nik: "))
-        noKK = int(input("masukan no kk: "))
-        pekerjaan = input("masukan data pekerjaan: ")
-        statusNikah = input("masukan status nikah (True or False)")
-        isAlive = input("masukan status hidup (True or False)")
-        return IdentitasNegara(
-            nama=self.nama,
-            umur=self._umur,
-            tempatLahir=self.tempatLahir,
-            nik=nik,
-            noKK=noKK,
-            pekerjaan=pekerjaan,
-            statusNikah=statusNikah,
-            isAlive=isAlive,
-        )
+    def tambahData(self, db_manager):
+        super().tambahData(db_manager)
+        nik = int(input("Masukkan NIK: "))
+        noKK = int(input("Masukkan Nomor KK: "))
+        pekerjaan = input("Masukkan Pekerjaan: ")
+        statusNikah = input("Masukkan Status Nikah (True or False): ")
+        isAlive = input("Masukkan Status Hidup (True or False): ")
+
+        # Menambah data ke database
+        query = "INSERT INTO identitasnegara (nama, umur, tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        values = (self.nama, self._umur, self.tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive)
+        db_manager.execute_query(query, values)
 
     def tambahTahunLahir(self, tahun):
         super().tambahTahunLahir(tahun)
 
-    # Menambahkan method untuk mengakses variabel private __nik
     def get_nik(self):
         return self.__nik
 
 
 class CatatanTindakKriminal(IdentitasNegara):
-    def __init__(
-        self,
-        nama,
-        umur,
-        tempatLahir,
-        nik,
-        noKK,
-        pekerjaan,
-        statusNikah,
-        isAlive,
-        jenisTindakKriminal,
-        tanggalTindakKriminal,
-        isSudahDipidana,
-    ):
-        super().__init__(
-            nama, umur, tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive
-        )
+    def __init__(self, nama, umur, tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive, jenisTindakKriminal, tanggalTindakKriminal, isSudahDipidana):
+        super().__init__(nama, umur, tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive)
         self.jenisTindakKriminal = jenisTindakKriminal
         self._tanggalTindakKriminal = tanggalTindakKriminal
         self.__isSudahDipidana = isSudahDipidana
+        self.__noKK = noKK  # Menambahkan atribut __noKK
 
     def tampil(self):
         super().tampil()
@@ -98,174 +111,69 @@ class CatatanTindakKriminal(IdentitasNegara):
         print(f"Tanggal Tindak Kriminal: {self._tanggalTindakKriminal}")
         print(f"Sudah Dipidana: {self.__isSudahDipidana}")
 
-    def tambahData(self):
-        super().tambahData()
-        jenisTindakKriminal = input("masukan jenis tindakan: ")
-        tanggalTindakKriminal = input("masukan tanggal tindakan: ")
-        isSudahDipidana = input("apakah sudah dipidana? (y/n): ")
-        return CatatanTindakKriminal(
-            nama=self.nama,
-            umur=self._umur,
-            tempatLahir=self.tempatLahir,
-            nik=self.get_nik(),
-            noKK=self.__noKK,
-            pekerjaan=self._pekerjaan,
-            statusNikah=self.statusNikah,
-            isAlive=self.isAlive,
-            jenisTindakKriminal=jenisTindakKriminal,
-            tanggalTindakKriminal=tanggalTindakKriminal,
-            isSudahDipidana=isSudahDipidana,
-        )
-    
+    def tambahData(self, db_manager):
+        super().tambahData(db_manager)
+        jenisTindakKriminal = input("Masukkan Jenis Tindak Kriminal: ")
+        tanggalTindakKriminal = input("Masukkan Tanggal Tindak Kriminal: ")
+        isSudahDipidana = input("Apakah Sudah Dipidana? (y/n): ")
+
+        # Menambah data ke database
+        query = "INSERT INTO catatantindakkriminal (nama, umur, tempatLahir, nik, noKK, pekerjaan, statusNikah, isAlive, jenisTindakKriminal, tanggalTindakKriminal, isSudahDipidana) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+        values = (self.nama, self._umur, self.tempatLahir, self.get_nik(), self.__noKK, self._pekerjaan, self.statusNikah, self.isAlive, jenisTindakKriminal, tanggalTindakKriminal, isSudahDipidana)
+        db_manager.execute_query(query, values)
+
+
     def isDewasa(self):
         return super().isDewasa() and self._pekerjaan != "Pelajar"
 
 
-# Contoh operator logika:
-sosial = Sosial("albert", 20, "Jogja")
-ck = CatatanTindakKriminal("meguhunter", 17, "wonosobo", 123456789, 987654321, "mahasiswa", False, True, "kasus pelecehan terhadap anak ayam", "20", False)
+# Membuat objek DatabaseManager
+db_manager = DatabaseManager(host="localhost", user="root", password="", database="5220411242")
 
-print(sosial.isDewasa())  # Memeriksa apakah orang dewasa menggunakan metode dari kelas Sosial
-print()
-
-print(ck.isDewasa())  # Memeriksa apakah orang dewasa menggunakan metode dari kelas IdentitasNegara (override)
-
-ck.tampil()
-
-print("\n")
-print("*" * 40)
-print("\n")
-
-
-# Contoh operator aritmatika:
-sosial = Sosial("albert", 20, "Jogja")
-identitas_negara = IdentitasNegara(
-    "John", 25, "Jakarta", 123456789, 987654321, "PNS", True, True
-)
-
-sosial.tampil()
-print()
-
-print("\n")
-print("*" * 40)
-print("\n")
-
-sosial.tambahTahunLahir(5)  # Menambah umur menggunakan metode dari kelas Sosial
-sosial.tampil()
-print()
-
-identitas_negara.tambahTahunLahir(
-    3
-)  # Menambah umur menggunakan metode dari kelas IdentitasNegara (override)
-identitas_negara.tampil()
-
-print("\n")
-print("*" * 40)
-print("\n")
-
-# Contoh penggunaan inheritance:
-sosial = Sosial("albert", 20, "Jogja")
-identitas_negara = IdentitasNegara(
-    "John", 25, "Jakarta", 123456789, 987654321, "PNS", True, True
-)
-catatan_kriminal = CatatanTindakKriminal(
-    "Alice",
-    30,
-    "Surabaya",
-    987654321,
-    123456789,
-    "Swindler",
-    False,
-    True,
-    "Penipuan",
-    "2023-01-02",
-    False,
-)
-
-sosial.tampil()
-print()
-identitas_negara.tampil()
-print()
-catatan_kriminal.tampil()
-
-print("\n")
-print("*" * 40)
-print("\n")
-
-# Contoh penggunaan encapsulation:
-identitas_negara = IdentitasNegara(
-    "John", 25, "Jakarta", 123456789, 987654321, "PNS", True, True
-)
-print(identitas_negara._umur)  # Variabel dengan underscore masih bisa diakses dari luar
-
-# Mengakses variabel private __nik melalui method get_nik
-print(identitas_negara.get_nik())
-
-print("\n")
-print("*" * 40)
-print("\n")
-
-# Contoh overriding (polimorfisme pada metode):
-sosial = Sosial("albert", 20, "Jogja")
-identitas_negara = IdentitasNegara(
-    "John", 25, "Jakarta", 123456789, 987654321, "PNS", True, True
-)
-
-sosial.tampil()  # Memanggil metode dari kelas Sosial
-print()
-identitas_negara.tampil()  # Memanggil metode dari kelas IdentitasNegara
-
-print("\n")
-print("*" * 40)
-print("\n")
-
-
-# Contoh overloading (polimorfisme pada metode):
-sosial = Sosial("ali",22,'bogor')
-identitas_negara = IdentitasNegara("John", 25, "Jakarta", 123456789, 987654321, "PNS", True, True)
-
-sosial.tampil()  # Memanggil metode tanpa parameter dari kelas Sosial
-print()
-identitas_negara.tampil()  # Memanggil metode tanpa parameter dari kelas IdentitasNegara
-print()
-sosial.tampil(
-
-)  # Memanggil metode dengan parameter dari kelas Sosial
-print()
-identitas_negara.tampil(
-)  # Memanggil metode dengan parameter dari kelas IdentitasNegara
-
-print("\n")
-print("*" * 40)
-print("\n")
-
-def looping():
+def looping(db_manager):
     # Looping untuk menambah data
     while True:
         print("\n1. Tambah Data Sosial")
         print("2. Tambah Data Identitas Negara")
         print("3. Tambah Data Catatan Tindak Kriminal")
         print("4. Tampilkan Semua Data")
-        print("5. Keluar")
+        print("5. Hapus Data Berdasarkan NIK")
+        print("6. Update Data Berdasarkan NIK")
+        print("7. Keluar")
 
-        pilihan = input("Pilih menu (1-5): ")
+        pilihan = input("Pilih menu (1-7): ")
 
         if pilihan == "1":
-            data.append(Sosial("", 0, "").tambahData())
+            sosial = Sosial("", 0, "")
+            sosial.tambahData(db_manager)
         elif pilihan == "2":
-            data.append(IdentitasNegara("", 0, "", 0, 0, "", False, False).tambahData())
+            identitasnegara = IdentitasNegara("", 0, "", 0, 0, "", False, False)
+            identitasnegara.tambahData(db_manager)
         elif pilihan == "3":
-            data.append(
-                CatatanTindakKriminal("", 0, "", 0, 0, "", False, False, "", "", False).tambahData()
-            )
+            catatan_kriminal = CatatanTindakKriminal("", 0, "", 0, 0, "", False, False, "", "", False)
+            catatan_kriminal.tambahData(db_manager)
         elif pilihan == "4":
-            for item in data:
-                item.tampil()
-                print("\n" + "*" * 40 + "\n")
+            # Menampilkan semua data dari database
+            query = "SELECT * FROM sosial"
+            result = db_manager.fetch_all(query)
+            for row in result:
+                print(row)
         elif pilihan == "5":
+            nik_hapus = input("Masukkan NIK untuk menghapus data: ")
+            db_manager.hapus_data("identitasnegara", "nik", nik_hapus)
+            print(f"Data dengan NIK {nik_hapus} telah dihapus.")
+        elif pilihan == "6":
+            nik_update = input("Masukkan NIK untuk memperbarui data: ")
+            set_column = input("Masukkan nama kolom yang ingin diperbarui: ")
+            set_value = input("Masukkan nilai baru: ")
+            db_manager.update_data("identitasnegara", set_column, set_value, "nik", nik_update)
+            print(f"Data dengan NIK {nik_update} telah diperbarui.")
+        elif pilihan == "7":
             print("Terima kasih! Keluar dari program.")
             break
         else:
             print("Pilihan tidak valid. Silakan pilih kembali.")
 
-            #opsional sajah saya sudah berada diambang batas kewarasan sayah
+
+# Menjalankan fungsi looping
+looping(db_manager)
